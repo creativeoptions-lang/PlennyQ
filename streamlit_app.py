@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
-import random
+import time
 
-# --- 1. DATA LOAD (ETL SIMULATION) ---
+# --- 1. DATA LOAD ---
 def load_data():
     data = {
         "Category": ["Anxiety"] * 5 + ["Purpose"] * 5,
@@ -16,7 +16,6 @@ def load_data():
     return pd.DataFrame(data)
 
 # --- 2. SESSION STATE ---
-# Initialize all necessary states to prevent 'KeyError'
 if "current_day" not in st.session_state: st.session_state.current_day = 1
 if "day_completed" not in st.session_state: st.session_state.day_completed = False
 if "streak" not in st.session_state: st.session_state.streak = 0
@@ -69,9 +68,6 @@ if st.sidebar.button("🚀 Fast-Track Day 3", key="tester_3", use_container_widt
     st.session_state.streak = 3
     if "Trinity Walker" not in st.session_state.badges: st.session_state.badges.append("Trinity Walker")
     st.rerun()
-if st.sidebar.button("🚨 Reset App", key="tester_reset", use_container_width=True):
-    st.session_state.update({"current_day": 1, "streak": 0, "missed_days": 0, "day_completed": False, "badges": []})
-    st.rerun()
 
 # --- 5. MAIN LOGIC ---
 if nav_choice == "Daily Walk":
@@ -88,7 +84,6 @@ if nav_choice == "Daily Walk":
         st.subheader(f"Day {st.session_state.current_day}")
         st.info(f"**Today's Challenge:** {row['Challenge']}")
         
-        # FIXED: Devotion expanded by default
         with st.expander("📖 Daily Devotion & Guidance", expanded=True):
             st.write(row['Devotion'])
             st.markdown(f"**🕊️ Spirit Guidance Prompt:** *{row['Spirit_Prompt']}*")
@@ -99,20 +94,21 @@ if nav_choice == "Daily Walk":
         with c1:
             if st.button("Complete Day", key="complete_btn", use_container_width=True):
                 if journal_entry:
+                    # Trigger the full-screen confetti effect
+                    st.balloons()
+                    st.snow() # Snow acts as the "confetti" particles falling from the top
+                    
                     st.session_state.day_completed = True
                     st.session_state.streak += 1
                     
-                    # Milestone Celebrations
-                    new_badge = None
-                    if st.session_state.current_day == 1: new_badge = "First Step"
-                    elif st.session_state.current_day == 3: new_badge = "Trinity Walker"
-                    elif st.session_state.current_day == 5: new_badge = "Track Overcomer"
+                    # Manage badges
+                    if st.session_state.current_day == 1: 
+                        if "First Step" not in st.session_state.badges: st.session_state.badges.append("First Step")
+                    elif st.session_state.current_day == 3:
+                        if "Trinity Walker" not in st.session_state.badges: st.session_state.badges.append("Trinity Walker")
                     
-                    if new_badge and new_badge not in st.session_state.badges:
-                        st.session_state.badges.append(new_badge)
-                        st.snow()
-                    
-                    st.balloons()
+                    st.success("🎉 Day Completed! Great job!")
+                    time.sleep(2) # Brief pause to let the user see the celebration
                     st.rerun()
                 else:
                     st.warning("Please record a response.")
@@ -124,13 +120,10 @@ if nav_choice == "Daily Walk":
 
         if st.session_state.day_completed:
             st.divider()
-            if st.session_state.current_day < 5:
-                if st.button("✨ Step Into Next Day", type="primary", use_container_width=True):
-                    st.session_state.current_day += 1
-                    st.session_state.day_completed = False
-                    st.rerun()
-            else:
-                st.success("🎉 Track Complete!")
+            if st.button("✨ Step Into Next Day", type="primary", use_container_width=True):
+                st.session_state.current_day += 1
+                st.session_state.day_completed = False
+                st.rerun()
 
 else:
     st.header("Connect with a Coach")
