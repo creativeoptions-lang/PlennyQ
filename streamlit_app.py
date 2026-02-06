@@ -16,18 +16,19 @@ def load_data():
     return pd.DataFrame(data)
 
 # --- 2. SESSION STATE ---
-for key, val in {
-    "current_day": 1, "day_completed": False, "streak": 0, 
-    "badges": [], "missed_days": 0, "active_tab": "Daily Walk"
-}.items():
-    if key not in st.session_state: st.session_state[key] = val
+# Initialize all necessary states to prevent 'KeyError'
+if "current_day" not in st.session_state: st.session_state.current_day = 1
+if "day_completed" not in st.session_state: st.session_state.day_completed = False
+if "streak" not in st.session_state: st.session_state.streak = 0
+if "badges" not in st.session_state: st.session_state.badges = []
+if "missed_days" not in st.session_state: st.session_state.missed_days = 0
+if "active_tab" not in st.session_state: st.session_state.active_tab = "Daily Walk"
 
-# --- 3. UI STYLING (High Contrast Black Text & Pro Admin) ---
+# --- 3. UI STYLING ---
 st.markdown("""
     <style>
-    .badge-card { background-color: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e0e0e0; margin-bottom: 5px; text-align: center; font-weight: bold; color: #000000; }
+    .badge-card { background-color: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e0e0e0; margin-bottom: 5px; text-align: center; font-weight: bold; color: #000; }
     
-    /* Streak Box - High Contrast Black Text */
     .streak-box { 
         background-color: #FFF9C4; 
         padding: 10px; 
@@ -39,11 +40,9 @@ st.markdown("""
         color: #000000 !important;
     }
     
-    /* Action Buttons */
     button[key="complete_btn"] { background-color: #2ECC71 !important; color: white !important; font-weight: bold !important; border-radius: 20px !important; }
     button[key="help_btn"] { background-color: #E74C3C !important; color: white !important; font-weight: bold !important; border-radius: 20px !important; }
     
-    /* Admin Buttons - Slate/Charcoal */
     button[key^="tester"] {
         background-color: #34495E !important; 
         color: #FFFFFF !important; 
@@ -66,7 +65,8 @@ for b in st.session_state.badges:
 st.sidebar.divider()
 st.sidebar.subheader("🛠️ Admin Tools")
 if st.sidebar.button("🚀 Fast-Track Day 3", key="tester_3", use_container_width=True):
-    st.session_state.update({"current_day": 3, "streak": 3})
+    st.session_state.current_day = 3
+    st.session_state.streak = 3
     if "Trinity Walker" not in st.session_state.badges: st.session_state.badges.append("Trinity Walker")
     st.rerun()
 if st.sidebar.button("🚨 Reset App", key="tester_reset", use_container_width=True):
@@ -75,7 +75,6 @@ if st.sidebar.button("🚨 Reset App", key="tester_reset", use_container_width=T
 
 # --- 5. MAIN LOGIC ---
 if nav_choice == "Daily Walk":
-    # Streak with bold black text
     st.markdown(f"<div class='streak-box'>🔥 SPIRIT STREAK: {st.session_state.streak} DAYS</div>", unsafe_allow_html=True)
     
     category = st.selectbox("Focus Track:", df["Category"].unique())
@@ -89,19 +88,51 @@ if nav_choice == "Daily Walk":
         st.subheader(f"Day {st.session_state.current_day}")
         st.info(f"**Today's Challenge:** {row['Challenge']}")
         
-        # EXPANDED BY DEFAULT: Use the 'expanded' parameter
+        # FIXED: Devotion expanded by default
         with st.expander("📖 Daily Devotion & Guidance", expanded=True):
             st.write(row['Devotion'])
             st.markdown(f"**🕊️ Spirit Guidance Prompt:** *{row['Spirit_Prompt']}*")
 
-        journal_entry = st.text_area("Your Response", key="journal_input", placeholder="Record your breakthrough here...")
+        journal_entry = st.text_area("Your Response", key="journal_input", placeholder="Record your breakthrough...")
 
         c1, c2 = st.columns(2)
         with c1:
             if st.button("Complete Day", key="complete_btn", use_container_width=True):
                 if journal_entry:
-                    st.session_state.update({"day_completed": True, "streak": st.session_state.streak + 1})
+                    st.session_state.day_completed = True
+                    st.session_state.streak += 1
                     
                     # Milestone Celebrations
                     new_badge = None
-                    if st.session_state
+                    if st.session_state.current_day == 1: new_badge = "First Step"
+                    elif st.session_state.current_day == 3: new_badge = "Trinity Walker"
+                    elif st.session_state.current_day == 5: new_badge = "Track Overcomer"
+                    
+                    if new_badge and new_badge not in st.session_state.badges:
+                        st.session_state.badges.append(new_badge)
+                        st.snow()
+                    
+                    st.balloons()
+                    st.rerun()
+                else:
+                    st.warning("Please record a response.")
+        
+        with c2:
+            if st.button("Get Help", key="help_btn", use_container_width=True):
+                st.session_state.saved_journal = journal_entry
+                st.info("Head to the Coaching tab to send.")
+
+        if st.session_state.day_completed:
+            st.divider()
+            if st.session_state.current_day < 5:
+                if st.button("✨ Step Into Next Day", type="primary", use_container_width=True):
+                    st.session_state.current_day += 1
+                    st.session_state.day_completed = False
+                    st.rerun()
+            else:
+                st.success("🎉 Track Complete!")
+
+else:
+    st.header("Connect with a Coach")
+    st.text_area("Your Context", value=st.session_state.get("saved_journal", ""), height=150)
+    if st.button("Submit to Coach"): st.success("Message Sent!")
