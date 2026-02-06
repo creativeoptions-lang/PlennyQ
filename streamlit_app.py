@@ -1,47 +1,60 @@
 import streamlit as st
 import pandas as pd
 
-# 1. DATA LOAD
+# 1. ENHANCED DATA LOAD (Added Day 2 for testing)
 def load_data():
     data = {
-        "Category": ["Anxiety", "Purpose", "Relationships"],
-        "Day": [1, 1, 1],
-        "Scripture": ["Philippians 4:6-7", "Ephesians 2:10", "1 Peter 4:8"],
+        "Category": ["Anxiety", "Anxiety", "Purpose", "Purpose"],
+        "Day": [1, 2, 1, 2],
+        "Scripture": ["Philippians 4:6-7", "John 14:27", "Ephesians 2:10", "Jeremiah 29:11"],
         "Verse": [
             "Do not be anxious about anything...",
+            "Peace I leave with you; my peace I give you...",
             "For we are God’s handiwork...",
-            "Above all, love each other deeply..."
+            "For I know the plans I have for you..."
         ],
         "Challenge": [
             "What is the one thing you are trying to control today?",
+            "Identify a situation where you are choosing fear over peace.",
             "Identify one gift you have been hiding out of fear.",
-            "Who is the person you find hardest to extend grace to?"
+            "What is one 'future fear' stopping you from acting today?"
         ],
         "Devotion": [
-            "Surrender is the bridge to peace. When we stop managing outcomes, we start trusting the Provider.",
-            "You were designed with intention. Your purpose isn't found, it's unleashed through obedience.",
-            "Grace is the oxygen of a relationship. Breathe it in from God and exhale it toward others."
+            "Surrender is the bridge to peace.",
+            "Peace is a person (Jesus), not just the absence of noise.",
+            "You were designed with intention.",
+            "God's plans are for your good, even when the path is blurry."
         ],
-        "Spirit_Prompt": ["Ask the Spirit...", "Ask the Spirit...", "Ask the Spirit..."]
+        "Spirit_Prompt": ["Ask the Spirit...", "Ask the Spirit...", "Ask the Spirit...", "Ask the Spirit..."]
     }
     return pd.DataFrame(data)
 
 # 2. SESSION STATE MANAGEMENT
 if "active_tab" not in st.session_state:
     st.session_state.active_tab = "Daily Walk"
+if "current_day" not in st.session_state:
+    st.session_state.current_day = 1
+if "day_completed" not in st.session_state:
+    st.session_state.day_completed = False
 
-# 3. CSS FOR CUSTOM BUTTON COLORS (Cleaned and Fixed)
+# 3. CSS FOR CUSTOM BUTTON COLORS
 st.markdown("""
     <style>
     /* Complete Day - Light Green */
-    button[kind="secondary"]:nth-of-type(1) {
+    div.stButton > button:first-child {
         background-color: #90EE90 !important;
         color: black !important;
     }
     /* Get Help - Light Red */
-    button[kind="secondary"]:nth-of-type(2) {
+    div.stColumns > div:nth-child(2) button {
         background-color: #FFCCCB !important;
         color: black !important;
+    }
+    /* Peek Ahead - Light Blue */
+    .stButton > button[key="peek_button"] {
+        background-color: #ADD8E6 !important;
+        color: black !important;
+        margin-top: 20px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -49,58 +62,73 @@ st.markdown("""
 # 4. NAVIGATION
 df = load_data()
 tabs = ["Daily Walk", "🆘 Request Coaching"]
-# Sidebar navigation is more stable for state switching
 active_tab = st.sidebar.radio("Navigation", tabs, index=tabs.index(st.session_state.active_tab))
 
 if active_tab == "Daily Walk":
     st.title("🕊️ SpiritWalk")
     category = st.selectbox("Select Your Focus:", df["Category"].unique())
-    selected = df[df["Category"] == category].iloc[0]
-
-    # Scripture Card (String block fixed)
-    scripture_html = f"""<div style="background-color:#f8f9fa;padding:20px;border-radius:10px;border-left:5px solid #6c757d;margin-bottom:20px;">
-        <i style="color:#333;">"{selected['Verse']}"</i><br><b style="color:#666;">— {selected['Scripture']}</b>
-    </div>"""
-    st.markdown(scripture_html, unsafe_allow_html=True)
-
-    st.subheader("Today's Challenge")
-    st.info(selected['Challenge'])
-
-    with st.expander("📖 View Daily Devotion"):
-        st.write(selected['Devotion'])
-
-    journal_entry = st.text_area("Your Response to the Spirit", placeholder="Record your breakthrough...", key="journal_input")
-
-    # BUTTONS
-    col1, col2 = st.columns(2)
     
-    with col1:
-        if st.button("Complete Day", use_container_width=True):
-            if journal_entry:
-                st.success("Entry Saved!")
-                st.balloons()
-            else:
-                st.warning("Please record your thoughts.")
+    # Filter by Category AND Current Day
+    day_data = df[(df["Category"] == category) & (df["Day"] == st.session_state.current_day)]
+    
+    if not day_data.empty:
+        selected = day_data.iloc[0]
 
-    with col2:
-        if st.button("Get Help", use_container_width=True):
-            if journal_entry:
-                st.session_state.saved_journal = journal_entry
-                st.session_state.active_tab = "🆘 Request Coaching"
+        # Scripture Card
+        scripture_html = f"""<div style="background-color:#f8f9fa;padding:20px;border-radius:10px;border-left:5px solid #6c757d;margin-bottom:20px;">
+            <i style="color:#333;">"{selected['Verse']}"</i><br><b style="color:#666;">— {selected['Scripture']}</b>
+        </div>"""
+        st.markdown(scripture_html, unsafe_allow_html=True)
+
+        st.subheader(f"Day {st.session_state.current_day}: The Challenge")
+        st.info(selected['Challenge'])
+
+        with st.expander("📖 View Daily Devotion"):
+            st.write(selected['Devotion'])
+
+        journal_entry = st.text_area("Your Response to the Spirit", placeholder="Record your breakthrough...", key="journal_input")
+
+        # ACTION BUTTONS
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Complete Day", use_container_width=True):
+                if journal_entry:
+                    st.session_state.day_completed = True
+                    st.success("Day Complete!")
+                    st.balloons()
+                    st.rerun()
+                else:
+                    st.warning("Please record your thoughts first.")
+
+        with col2:
+            if st.button("Get Help", use_container_width=True):
+                if journal_entry:
+                    st.session_state.saved_journal = journal_entry
+                    st.session_state.active_tab = "🆘 Request Coaching"
+                    st.rerun()
+                else:
+                    st.error("Please enter a response first.")
+
+        # 5. PEEK ahead logic
+        if st.session_state.day_completed:
+            st.divider()
+            if st.button("✨ Peek Ahead to Next Day", key="peek_button", use_container_width=True):
+                st.session_state.current_day += 1
+                st.session_state.day_completed = False  # Reset for the new day
                 st.rerun()
-            else:
-                st.error("Please enter a response first so the coach has context.")
+    else:
+        st.success("🎉 You've reached the end of the available content for this category!")
+        if st.button("Restart Journey"):
+            st.session_state.current_day = 1
+            st.rerun()
 
 elif active_tab == "🆘 Request Coaching":
     st.header("Connect with a Coach")
-    saved_text = st.session_state.get("saved_journal", "No journal entry provided.")
+    saved_text = st.session_state.get("saved_journal", "No entry provided.")
+    message_to_coach = st.text_area("Message to Coach", value=f"Context:\n{saved_text}\n\nHelp me with...")
     
-    message_to_coach = st.text_area("Message to Coach", 
-                                    value=f"Context from my session:\n{saved_text}\n\nCoach, I need help with...")
-
-    if st.button("Submit to Coach", use_container_width=True):
-        st.success("Your coach has been notified!")
-    
-    if st.button("← Back to Walk", use_container_width=True):
+    if st.button("Submit to Coach"):
+        st.success("Sent!")
+    if st.button("← Back"):
         st.session_state.active_tab = "Daily Walk"
         st.rerun()
